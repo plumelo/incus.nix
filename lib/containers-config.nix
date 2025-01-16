@@ -1,7 +1,9 @@
 { modulesPath, config, pkgs, lib, ... }:
 let
-  containers = config.virtualisation.lxd.containers;
-  package = config.virtualisation.lxd.package;
+  cfg = config.virtualisation.incus;
+  group = "incus-admin";
+  containers = cfg.containers;
+  package = cfg.package;
   configFormat = pkgs.formats.yaml { };
   mkService = { name, enable, auto, image, config, devices, profiles, ... }@cfg:
     let
@@ -25,24 +27,25 @@ let
     rec {
       inherit enable;
       wantedBy = lib.optional cfg.auto "multi-user.target";
+      after = [ "incus.service" ];
       path = [ package ] ++ (with pkgs; [ yq-go gnutar util-linux xz ]);
       script = ''
         root=$(find ${root} -name "*.tar.xz" -xtype f -print -quit)
         metadata=$(find ${metadata} -name "*.tar.xz" -xtype f -print -quit)
-        fg=$(lxc image info ${name}-image | yq '.Fingerprint')
-        if lxc image import $metadata $root --alias ${name}-image; then
-          lxc image delete $fg || true
-          if lxc info ${name}; then
-            lxc delete -f ${name}
+        fg=$(incus image info ${name}-image | yq '.Fingerprint')
+        if incus image import $metadata $root --alias ${name}-image; then
+          incus image delete $fg || true
+          if incus info ${name}; then
+            incus delete -f ${name}
           fi
-          lxc launch ${name}-image ${name}
+          incus launch ${name}-image ${name}
         fi
-        lxc config show ${name} | yq '. *= load("${configFormat.generate "lxd-container-${name}-config.yaml" instanceConf}")' | lxc config edit ${name}
-        lxc restart ${name} || true
+        incus config show ${name} | yq '. *= load("${configFormat.generate "inc-${name}-config.yaml" instanceConf}")' | incus config edit ${name}
+        incus restart ${name} || true
       '';
       serviceConfig = {
         Type = "oneshot";
-        Group = "lxd";
+        Group = group;
         RemainAfterExit = true;
       };
     };
@@ -50,17 +53,17 @@ in
 {
   systemd.services = lib.concatMapAttrs
     (name: cfg: {
-      "lxd-containers@${name}" = mkService (cfg // { inherit name; });
+      "incs@${name}" = mkService (cfg // { inherit name; });
     })
     containers;
 
-  systemd.tmpfiles.rules = lib.flatten (lib.mapAttrsToList
-    (n: v:
-      (lib.mapAttrsToList
-        (n: v: "d ${v.source} 0770 root lxd")
-        (lib.filterAttrs (n: v: v.type == "disk" && lib.hasPrefix "/var/lib/lxd/state" v.source) v.devices)
-      )
-    )
-    containers
-  );
+  #systemd.tmpfiles.rules = lib.flatten (lib.mapAttrsToList
+  #  (n: v:
+  #    (lib.mapAttrsToList
+  #      (n: v: "d ${v.source} 0770 root ${group}")
+  #      (lib.filterAttrs (n: v: v.type == "disk" && lib.hasPrefix "/var/lib/incus/state" v.source) v.devices)
+  #    )
+  #  )
+  #  containers
+  #);
 }

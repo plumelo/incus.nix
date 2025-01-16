@@ -1,5 +1,5 @@
 {
-  description = "Run NixOS containers with LXD.";
+  description = "Run NixOS containers with Incus.";
   inputs.nixpkgs.url = github:nixos/nixpkgs/nixos-unstable;
   outputs = { self, nixpkgs }: {
     nixosModules.default = { config, lib, pkgs, ... }@args: {

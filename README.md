@@ -1,2 +1,2 @@
-# lxd.nix
-Run NixOS containers with LXD. 
+# incus.nix
+Run NixOS containers with Incus.

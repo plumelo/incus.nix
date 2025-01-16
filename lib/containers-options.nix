@@ -33,7 +33,7 @@ with lib;
   config = mkOption {
     type = with types; nullOr attrs;
     description = lib.mdDoc ''
-      LXD container configuration.
+      Incus container configuration.
     '';
     default = null;
   };

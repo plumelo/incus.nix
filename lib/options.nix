@@ -6,7 +6,7 @@
 with lib;
 
 {
-  virtualisation.lxd = {
+  virtualisation.incus = {
     containers = mkOption {
       default = { };
       type = with types; attrsOf (submodule {
